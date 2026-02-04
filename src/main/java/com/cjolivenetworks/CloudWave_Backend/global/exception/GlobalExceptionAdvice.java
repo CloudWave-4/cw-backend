@@ -43,5 +43,6 @@ public class GlobalExceptionAdvice {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(GlobalErrorCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
-}
 
+    //post, get
+}
