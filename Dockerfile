@@ -1,6 +1,5 @@
-# ===========================================
 # Stage 1: Build
-# ===========================================
+
 FROM gradle:8.14-jdk17 AS builder
 
 WORKDIR /app
@@ -18,9 +17,8 @@ COPY src ./src
 # 애플리케이션 빌드 (테스트 제외)
 RUN gradle bootJar --no-daemon -x test
 
-# ===========================================
 # Stage 2: Runtime
-# ===========================================
+
 FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
