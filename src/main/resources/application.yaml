@@ -6,3 +6,17 @@ spring:
     url: jdbc:mysql://${DB_URL}:3306/${DB_NAME}?serverTimezone=Asia/Seoul
     username: ${DB_USERNAME}
     password: ${DB_PW}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+  kafka:
+    bootstrap-servers: ${MSK_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: waiting-group
+      auto-offset-reset: earliest
