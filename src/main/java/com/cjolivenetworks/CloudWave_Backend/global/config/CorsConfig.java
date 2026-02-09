@@ -9,13 +9,15 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry){
-        registry.addMapping("/*")
+        registry.addMapping("/**")
                 .allowedOrigins(
-                        "http://localhost:8080",
-                        "https://olive4.click"
+                        "http://localhost:3000",
+                        "https://olive4.click",
+                        "http://3.35.133.58:3000",
+                        "http://cloudwave-front-static.s3-website.ap-northeast-2.amazonaws.com"
                 )
                 .allowedMethods("PATCH","GET","POST","PUT","DELETE","OPTIONS")
-                .allowedHeaders("")
+                .allowedHeaders("*")
                 .maxAge(3600);
     }
 }
