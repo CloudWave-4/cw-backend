@@ -13,7 +13,8 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "http://localhost:3000",
                         "https://olive4.click",
-                        "http://3.35.133.58:3000"
+                        "http://3.35.133.58:3000",
+                        "http://cloudwave-front-static.s3-website.ap-northeast-2.amazonaws.com"
                 )
                 .allowedMethods("PATCH","GET","POST","PUT","DELETE","OPTIONS")
                 .allowedHeaders("*")
