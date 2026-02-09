@@ -13,7 +13,7 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "http://localhost:8080",
                         "https://olive4.click",
-                        "http://3.35.133.58"
+                        "http://3.35.133.58:3000"
                 )
                 .allowedMethods("PATCH","GET","POST","PUT","DELETE","OPTIONS")
                 .allowedHeaders("")
