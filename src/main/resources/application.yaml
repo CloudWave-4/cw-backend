@@ -47,7 +47,7 @@ spring:
     username: ${RDS_USERNAME}
     password: ${RDS_PW}
     hikari:
-      maximum-poll-size: 20
+      maximum-pool-size: 20
       minimum-idle: 10
       connection-timeout: 30000
       max-lifetime: 1800000

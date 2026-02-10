@@ -22,9 +22,6 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${spring.kafka.msk.enabled:false")
-    private Boolean isMskEnabled;
-
     // 1. Producer
     @Bean
     public ProducerFactory<String, String> producerFactory() {
@@ -38,6 +35,7 @@ public class KafkaConfig {
 
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate() {
+
         return new KafkaTemplate<>(producerFactory());
     }
 
@@ -59,6 +57,7 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         factory.setConcurrency(3);
+
         return factory;
     }
 
