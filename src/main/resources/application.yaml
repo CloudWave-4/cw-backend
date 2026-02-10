@@ -1,17 +1,10 @@
+# 공통 환경
 spring:
   application:
     name: CloudWave-Backend
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_URL}:3306/${DB_NAME}?serverTimezone=Asia/Seoul
-    username: ${DB_USERNAME}
-    password: ${DB_PW}
-  data:
-    redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+  profiles:
+    active: dev # default dev mode
   kafka:
-    bootstrap-servers: ${MSK_BOOTSTRAP_SERVERS}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -20,3 +13,53 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: waiting-group
       auto-offset-reset: earliest
+
+---
+# Dev 환경
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${LOCAL_DB_URL}:3306/${LOCAL_DB_NAME}?serverTimezone=Asia/Seoul
+    username: ${LOCAL_DB_USERNAME}
+    password: ${LOCAL_DB_PW}
+  data:
+    redis:
+      host: ${LOCAL_REDIS_HOST}
+      port: ${LOCAL_REDIS_PORT}
+  kafka:
+    bootstrap-servers: ${LOCAL_KAFKA_SERVERS}
+    msk:
+      enabled: false
+
+---
+# prod 환경
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${RDS_URL}:3306/${RDS_NAME}?serverTimezone=Asia/Seoul
+    username: ${RDS_USERNAME}
+    password: ${RDS_PW}
+    hikari:
+      maximum-poll-size: 20
+      minimum-idle: 10
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  data:
+    redis:
+      host: redis-service
+      port: 6379
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+
+  kafka:
+    bootstrap-servers: kafka-service:9092

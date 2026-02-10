@@ -22,6 +22,9 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
+    @Value("${spring.kafka.msk.enabled:false")
+    private Boolean isMskEnabled;
+
     // 1. Producer
     @Bean
     public ProducerFactory<String, String> producerFactory() {
@@ -29,9 +32,6 @@ public class KafkaConfig {
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-
-        // MSK IAM 인증
-        applyMskIamConfig(config);
 
         return new DefaultKafkaProducerFactory<>(config);
     }
@@ -51,9 +51,6 @@ public class KafkaConfig {
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        // MSK IAM 인증
-        applyMskIamConfig(config);
-
         return new DefaultKafkaConsumerFactory<>(config);
     }
 
@@ -61,14 +58,8 @@ public class KafkaConfig {
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        factory.setConcurrency(3);
         return factory;
     }
 
-    // 인증 설정 모듈
-    private void applyMskIamConfig(Map<String, Object> config) {
-        config.put("security.protocol", "SASL_SSL");
-        config.put("sasl.mechanism", "AWS_MSK_IAM");
-        config.put("sasl.jaas.config", "software.amazon.msk.auth.iam.IAMLoginModule required;");
-        config.put("sasl.client.callback.handler.class", "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
-    }
 }
