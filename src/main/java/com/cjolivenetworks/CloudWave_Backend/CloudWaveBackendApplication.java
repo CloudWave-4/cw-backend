@@ -15,5 +15,4 @@ public class CloudWaveBackendApplication {
 	public void imageUpdaterTest() {
 		System.out.println("image-updater-test1");
 	}
-
 }
