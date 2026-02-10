@@ -13,7 +13,7 @@ public class CloudWaveBackendApplication {
 
 	@PostConstruct
 	public void imageUpdaterTest() {
-		System.out.println("image-updater-test");
+		System.out.println("image-updater-test1");
 	}
 
 }
