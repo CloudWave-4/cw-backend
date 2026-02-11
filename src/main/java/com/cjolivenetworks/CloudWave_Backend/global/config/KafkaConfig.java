@@ -19,7 +19,7 @@ import org.springframework.util.backoff.FixedBackOff;
 import java.util.HashMap;
 import java.util.Map;
 
-@Configuration
+@Configuration (proxyBeanMethods = false)
 @EnableKafka
 public class KafkaConfig {
 

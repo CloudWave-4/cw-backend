@@ -22,7 +22,7 @@ public class TaskConsumer {
     private final ProductService productService;
 
     @KafkaListener(topics = "health-check-topic", groupId = "test-group")
-    public void consume(String message) {
+    public void consumeHealth(String message) {
         try {
             // JSON 문자열 역직렬화
             Map<String, Object> data = objectMapper.readValue(message, Map.class);
@@ -34,7 +34,7 @@ public class TaskConsumer {
     }
 
     @KafkaListener(topics="queue-topic")
-    public void consume(String message,Acknowledgment acknowledgment) {
+    public void consumeQueue(String message,Acknowledgment acknowledgment) {
         try{
             Map<String,Object> data= objectMapper.readValue(message, new TypeReference<Map<String, Object>>() {});
 

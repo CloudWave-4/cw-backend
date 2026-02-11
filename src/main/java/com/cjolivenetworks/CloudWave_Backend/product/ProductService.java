@@ -31,6 +31,6 @@ public class ProductService {
         Product product=productRepository.findById(productId)
                 .orElseThrow(()->new IllegalArgumentException("Product not found: "+productId));
         int q=Math.max(quantity,1);
-        product.increase(1);
+        product.increase(q);
     }
 }
