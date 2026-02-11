@@ -1,6 +1,4 @@
 package com.cjolivenetworks.CloudWave_Backend.global.queue.service;
-
-import com.cjolivenetworks.CloudWave_Backend.global.exception.GlobalException;
 import com.cjolivenetworks.CloudWave_Backend.global.queue.QueueConstants;
 import com.cjolivenetworks.CloudWave_Backend.global.queue.QueueStatus;
 import com.cjolivenetworks.CloudWave_Backend.global.queue.dto.QueueEnterRequest;
