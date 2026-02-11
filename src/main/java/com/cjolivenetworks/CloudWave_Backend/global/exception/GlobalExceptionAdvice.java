@@ -14,7 +14,8 @@ public class GlobalExceptionAdvice {
     @ExceptionHandler(GlobalException.class)
     public ResponseEntity<ErrorResponse> handleCommonException(GlobalException e) {
         return new ResponseEntity<>(
-                new ErrorResponse(e.getGlobalErrorCode()), e.getGlobalErrorCode().getHttpStatus());
+                new ErrorResponse(e.getGlobalErrorCode(), e.getMessage()),
+                e.getGlobalErrorCode().getHttpStatus());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
