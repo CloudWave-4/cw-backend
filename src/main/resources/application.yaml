@@ -13,6 +13,13 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: waiting-group
       auto-offset-reset: earliest
+  jpa:
+    hibernate:
+      ddl-auto: create
+    database: mysql
+    properties:
+      hibernate:
+        format_sql: true
 
 ---
 # Dev 환경

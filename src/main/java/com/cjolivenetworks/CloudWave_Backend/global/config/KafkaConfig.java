@@ -19,7 +19,7 @@ import org.springframework.util.backoff.FixedBackOff;
 import java.util.HashMap;
 import java.util.Map;
 
-@Configuration (proxyBeanMethods = false)
+@Configuration
 @EnableKafka
 public class KafkaConfig {
 
@@ -27,6 +27,8 @@ public class KafkaConfig {
     private String bootstrapServers;
 
     @Value("${spring.kafka.consumer.group-id:waiting-group}")
+    private String groupId;
+
     // 1. Producer
     @Bean
     public ProducerFactory<String, String> producerFactory() {
@@ -43,8 +45,8 @@ public class KafkaConfig {
     }
 
     @Bean
-    public KafkaTemplate<String, String> kafkaTemplate() {
-        return new KafkaTemplate<>(producerFactory());
+    public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> producerFactory) {
+        return new KafkaTemplate<>(producerFactory);
     }
 
     // 2. Consumer
@@ -52,7 +54,7 @@ public class KafkaConfig {
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, "waiting-group");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
@@ -70,12 +72,12 @@ public class KafkaConfig {
         );
 
         // 1초 간격 3번 재시도 후 DLT
-        FixedBackOff backOff=new FixedBackOff(1000L,3L);
-        return new DefaultErrorHandler(deadLetterPublishingRecoverer,backOff);
+        return new DefaultErrorHandler(deadLetterPublishingRecoverer,new FixedBackOff(1000L, 3L));
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+            ConsumerFactory<String, String> consumerFactory,
             DefaultErrorHandler kafkaErrorHandler
     ) {
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
