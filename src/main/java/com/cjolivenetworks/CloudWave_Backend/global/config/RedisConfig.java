@@ -13,7 +13,6 @@ import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializ
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import tools.jackson.databind.ObjectMapper;
 
-
 import java.time.Duration;
 
 @Configuration
@@ -40,8 +39,9 @@ public class RedisConfig {
     // @Cacheable 전용 (JSON 직렬화 + TTL)
     @Bean
     public RedisCacheManager redisCacheManager(
-            RedisConnectionFactory connectionFactory
-            , ObjectMapper objectMapper){
+            RedisConnectionFactory connectionFactory,
+            ObjectMapper objectMapper
+    ){
         RedisCacheConfiguration configuration=
                 RedisCacheConfiguration.defaultCacheConfig()
                         .serializeValuesWith(

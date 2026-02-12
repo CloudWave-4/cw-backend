@@ -15,4 +15,10 @@ public class GlobalException extends RuntimeException {
         super(globalErrorCode.getMessage(), cause);
         this.globalErrorCode = globalErrorCode;
     }
+
+    public GlobalException(GlobalErrorCode globalErrorCode, String message) {
+        super(message != null ? message : globalErrorCode.getMessage());
+        this.globalErrorCode = globalErrorCode;
+    }
+
 }
