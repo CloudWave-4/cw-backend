@@ -53,11 +53,14 @@ jobs:
           IMAGE_TAG=${{ github.sha }}
           ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
 
+          echo "ECR 이미지 인덱싱 대기 중 (15초)..."
+          sleep 15
+
           echo "스캔 시작 요청: $ECR_REPO_NAME:$IMAGE_TAG"
           aws ecr start-image-scan \
             --repository-name $ECR_REPO_NAME \
             --image-id imageTag=$IMAGE_TAG \
-            --region $AWS_REGION 2>/dev/null || echo "스캔이 이미 진행 중"
+            --region $AWS_REGION || echo "scan-on-push로 이미 스캔 시작됨"
 
           echo "스캔 완료 대기 중..."
           aws ecr wait image-scan-complete \
