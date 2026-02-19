@@ -16,6 +16,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests
+        run: ./gradlew test
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -35,3 +47,50 @@ jobs:
         run: |
           IMAGE_TAG=${{ github.sha }}
           docker push $ECR_REPO_URI:$IMAGE_TAG
+
+      - name: Wait for ECR scan to complete
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
+
+          echo "스캔 완료 대기 중: $ECR_REPO_NAME:$IMAGE_TAG"
+          aws ecr wait image-scan-complete \
+            --repository-name $ECR_REPO_NAME \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION
+
+      - name: Check ECR scan results
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
+
+          CRITICAL=$(aws ecr describe-image-scan-findings \
+            --repository-name $ECR_REPO_NAME \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION \
+            --query 'imageScanFindings.findingSeverityCounts.CRITICAL' \
+            --output text)
+
+          HIGH=$(aws ecr describe-image-scan-findings \
+            --repository-name $ECR_REPO_NAME \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION \
+            --query 'imageScanFindings.findingSeverityCounts.HIGH' \
+            --output text)
+
+          [ "$CRITICAL" = "None" ] && CRITICAL=0
+          [ "$HIGH" = "None" ] && HIGH=0
+
+          echo "CRITICAL: $CRITICAL"
+          echo "HIGH: $HIGH"
+
+          if [ "$CRITICAL" -gt "0" ]; then
+            echo "CRITICAL 취약점 ${CRITICAL}개 발견 - 배포 차단"
+            exit 1
+          fi
+
+          if [ "$HIGH" -gt "0" ]; then
+            echo "HIGH 취약점 ${HIGH}개 발견 - 확인 필요"
+          fi
+
+          echo "스캔 완료 (CRITICAL 없음)"
