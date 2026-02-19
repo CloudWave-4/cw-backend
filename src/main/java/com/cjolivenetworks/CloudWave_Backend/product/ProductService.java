@@ -30,7 +30,7 @@ public class ProductService {
     public void increaseStock(Long productId,int quantity){
         Product product=productRepository.findById(productId)
                 .orElseThrow(()->new IllegalArgumentException("Product not found: "+productId));
-        int q=Math.max(quantity,1);
+        Long q=Math.max(quantity,1L);
         product.increase(q);
     }
 }
