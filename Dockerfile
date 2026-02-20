@@ -18,21 +18,26 @@ COPY src ./src
 RUN gradle bootJar --no-daemon -x test
 
 # Stage 2: Runtime
-
 FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
+
+# wget 없을 수 있어서 안전하게
+RUN apk add --no-cache wget
+
+# OpenTelemetry Java Agent 추가 (버전 고정 권장)
+RUN wget -O /opentelemetry-javaagent.jar \
+    https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.32.0/opentelemetry-javaagent.jar
 
 # 보안을 위한 non-root 사용자 생성
 RUN addgroup -g 1001 appgroup && \
     adduser -u 1001 -G appgroup -D appuser
 
-# 빌드된 jar 파일 복사
-COPY --from=builder /app/build/libs/*SNAPSHOT.jar app.jar
-
+# 빌드된 jar 파일 복사(한 번만)
+COPY --from=builder /app/build/libs/*.jar /app/app.jar
 
 # 소유권 변경
-RUN chown appuser:appgroup app.jar
+RUN chown appuser:appgroup /app/app.jar
 
 # non-root 사용자로 전환
 USER appuser
@@ -48,4 +53,4 @@ ENV DB_USERNAME=""
 ENV DB_PW=""
 
 # 애플리케이션 실행
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -javaagent:/opentelemetry-javaagent.jar -jar /app/app.jar"]
