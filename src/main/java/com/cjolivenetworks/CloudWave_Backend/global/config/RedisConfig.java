@@ -19,17 +19,6 @@ import java.time.Duration;
 @EnableCaching
 public class RedisConfig {
 
-    @Value("${spring.data.redis.host}")
-    private String host;
-
-    @Value("${spring.data.redis.port}")
-    private int port;
-
-    @Bean
-    public RedisConnectionFactory redisConnectionFactory() {
-        return new LettuceConnectionFactory(host, port);
-    }
-
     // string 직렬화(큐/ 락/ 카운터) 전용
     @Bean
     public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory){

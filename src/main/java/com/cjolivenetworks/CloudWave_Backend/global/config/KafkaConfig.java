@@ -3,9 +3,7 @@ package com.cjolivenetworks.CloudWave_Backend.global.config;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -23,25 +21,10 @@ import java.util.Map;
 @EnableKafka
 public class KafkaConfig {
 
-    @Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
+    private final KafkaProperties kafkaProperties;
 
-    @Value("${spring.kafka.consumer.group-id:waiting-group}")
-    private String groupId;
-
-    // 1. Producer
-    @Bean
-    public ProducerFactory<String, String> producerFactory() {
-        Map<String, Object> config = new HashMap<>();
-        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-
-        config.put(ProducerConfig.ACKS_CONFIG,"all");
-        config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,true);
-        config.put(ProducerConfig.RETRIES_CONFIG,10);
-
-        return new DefaultKafkaProducerFactory<>(config);
+    public KafkaConfig(KafkaProperties kafkaProperties){
+        this.kafkaProperties=kafkaProperties;
     }
 
     @Bean
@@ -49,18 +32,24 @@ public class KafkaConfig {
         return new KafkaTemplate<>(producerFactory);
     }
 
-    // 2. Consumer
     @Bean
-    public ConsumerFactory<String, String> consumerFactory() {
-        Map<String, Object> config = new HashMap<>();
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false); // 수동 commit
+    public ProducerFactory<String, String> producerFactory(){
+        Map<String, Object> properties= kafkaProperties.buildProducerProperties();
 
-        return new DefaultKafkaConsumerFactory<>(config);
+        properties.put(ProducerConfig.ACKS_CONFIG, "all");
+        properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        properties.put(ProducerConfig.RETRIES_CONFIG, 10);
+
+        return new DefaultKafkaProducerFactory<>(properties);
+    }
+
+    @Bean
+    public ConsumerFactory<String, String> consumerFactory(){
+        Map<String, Object> properties= kafkaProperties.buildConsumerProperties();
+
+        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+
+        return new DefaultKafkaConsumerFactory<>(properties);
     }
 
     // 실패 시 topic.DLT 로 전송 + 재시도
@@ -85,7 +74,6 @@ public class KafkaConfig {
 
         factory.setConsumerFactory(consumerFactory());
         factory.setConcurrency(3);
-
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         factory.setCommonErrorHandler(kafkaErrorHandler);
 
