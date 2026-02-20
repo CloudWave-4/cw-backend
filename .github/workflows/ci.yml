@@ -3,6 +3,7 @@ name: CI - Build & Push to ECR
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -43,10 +44,17 @@ jobs:
           IMAGE_TAG=${{ github.sha }}
           docker build --provenance=false -t $ECR_REPO_URI:$IMAGE_TAG .
 
-      - name: Push Docker image
+      - name: Push Docker image (SHA tag)
         run: |
           IMAGE_TAG=${{ github.sha }}
           docker push $ECR_REPO_URI:$IMAGE_TAG
+
+      - name: Push Docker image (version tag, prod only)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION_TAG=${GITHUB_REF#refs/tags/}
+          docker tag $ECR_REPO_URI:${{ github.sha }} $ECR_REPO_URI:$VERSION_TAG
+          docker push $ECR_REPO_URI:$VERSION_TAG
 
       - name: Wait for ECR scan to complete
         run: |
@@ -103,3 +111,21 @@ jobs:
           fi
 
           echo "스캔 완료 (CRITICAL 없음)"
+
+      - name: Update prod values.yaml (prod only)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+        run: |
+          VERSION_TAG=${GITHUB_REF#refs/tags/}
+
+          git clone https://x-access-token:${GIT_TOKEN}@github.com/CloudWave-4/cw-infra.git infra-repo
+          cd infra-repo
+
+          sed -i "s|^  tag:.*|  tag: ${VERSION_TAG}|" charts/backend/values-prod.yaml
+
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add charts/backend/values-prod.yaml
+          git commit -m "chore: update prod image tag to ${VERSION_TAG}"
+          git push origin main
