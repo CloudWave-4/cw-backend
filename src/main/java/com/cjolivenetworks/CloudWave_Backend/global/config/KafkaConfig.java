@@ -15,7 +15,6 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @ConditionalOnProperty(prefix = "app.kafka", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -81,5 +80,4 @@ public class KafkaConfig {
 
         return factory;
     }
-
 }
