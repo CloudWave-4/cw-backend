@@ -1,5 +1,6 @@
 package com.cjolivenetworks.CloudWave_Backend.global.config;
 
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -79,5 +80,12 @@ public class KafkaConfig {
         factory.setCommonErrorHandler(kafkaErrorHandler);
 
         return factory;
+    }
+
+    // spring.kafka.* 설정
+    @Bean(destroyMethod = "close")
+    public AdminClient adminClient(){
+        Map<String, Object> properties=kafkaProperties.buildAdminProperties();
+        return AdminClient.create(properties);
     }
 }
