@@ -23,7 +23,7 @@ public class TaskConsumer {
     private final QueueService queueService;
     private final ProductService productService;
 
-    @KafkaListener(topics = "health-check-topic", groupId = "test-group")
+    @KafkaListener(topics = "health-check-topic")
     public void consumeHealth(String message) {
         try {
             // JSON 문자열 역직렬화
