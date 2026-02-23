@@ -69,6 +69,9 @@ spring:
     redis:
       host: ${ELASTICACHE_HOST}
       port: ${ELASTICACHE_PORT}
+      ssl:
+        enabled: true
+      timeout: 2s
       lettuce:
         pool:
           max-active: 20
