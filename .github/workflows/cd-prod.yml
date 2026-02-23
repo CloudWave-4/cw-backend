@@ -1,0 +1,107 @@
+name: CD - Release to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPO_URI: ${{ secrets.ECR_REPO_URI }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests
+        run: ./gradlew test -Dspring.profiles.active=test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          IMAGE_TAG=${{ github.ref_name }}
+          docker build --provenance=false -t $ECR_REPO_URI:$IMAGE_TAG .
+
+      - name: Push Docker image
+        run: |
+          IMAGE_TAG=${{ github.ref_name }}
+          docker push $ECR_REPO_URI:$IMAGE_TAG
+
+      - name: Wait for ECR scan to complete
+        run: |
+          IMAGE_TAG=${{ github.ref_name }}
+          ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
+
+          echo "ECR 이미지 인덱싱 대기 중 (15초)..."
+          sleep 15
+
+          aws ecr start-image-scan \
+            --repository-name $ECR_REPO_NAME \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION || echo "scan-on-push로 이미 스캔 시작됨"
+
+          aws ecr wait image-scan-complete \
+            --repository-name $ECR_REPO_NAME \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION
+
+      - name: Check ECR scan results
+        run: |
+          IMAGE_TAG=${{ github.ref_name }}
+          ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
+
+          CRITICAL=$(aws ecr describe-image-scan-findings \
+            --repository-name $ECR_REPO_NAME \
+            --image-id imageTag=$IMAGE_TAG \
+            --region $AWS_REGION \
+            --query 'imageScanFindings.findingSeverityCounts.CRITICAL' \
+            --output text)
+
+          if [ "$CRITICAL" = "None" ] || [ -z "$CRITICAL" ]; then
+            CRITICAL=0
+          fi
+
+          if [ "$CRITICAL" -gt "0" ]; then
+            echo "CRITICAL 취약점 ${CRITICAL}개 발견 - 배포 차단"
+            exit 1
+          fi
+
+          echo "스캔 완료 (CRITICAL 없음)"
+
+      - name: Update values-prod.yaml in cw-infra
+        run: |
+          IMAGE_TAG=${{ github.ref_name }}
+
+          git clone https://x-access-token:${{ secrets.GIT_TOKEN }}@github.com/CloudWave-4/cw-infra.git
+          cd cw-infra
+
+          # values-prod.yaml 파일 내의 tag: 뒤의 값을 업데이트 (공백 유연하게 처리)
+          sed -i "s/tag:.*/tag: $IMAGE_TAG/" charts/backend/values-prod.yaml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/backend/values-prod.yaml
+          git commit -m "release: update backend prod image to $IMAGE_TAG"
+          git push
