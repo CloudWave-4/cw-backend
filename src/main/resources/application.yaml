@@ -84,3 +84,19 @@ spring:
       sasl.mechanism: AWS_MSK_IAM
       sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
       sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+---
+# dr 환경
+spring:
+  config:
+    activate:
+      on-profile: dr
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DR_DB_URL}:3306/${DR_DB_NAME}?serverTimezone=Asia/Seoul
+    username: ${DR_DB_USERNAME}
+    password: ${DR_DB_PW}
+app:
+  kafka:
+    enabled: false
+  redis:
+    enabled: false
