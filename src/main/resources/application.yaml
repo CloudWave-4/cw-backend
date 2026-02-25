@@ -15,7 +15,7 @@ spring:
       auto-offset-reset: earliest
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     database: mysql
     properties:
       hibernate:
