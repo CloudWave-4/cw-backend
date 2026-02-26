@@ -10,7 +10,7 @@ env:
   ECR_REPO_URI: ${{ secrets.ECR_REPO_URI }}
 
 jobs:
-  build-and-deploy:
+  build-and-scan:
     runs-on: ubuntu-latest
 
     steps:
@@ -77,6 +77,19 @@ jobs:
           fi
 
           echo "스캔 완료 (CRITICAL 없음)"
+
+  deploy-to-prod:
+    needs: build-and-scan
+    environment: production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Update values-prod.yaml in cw-infra
         run: |
