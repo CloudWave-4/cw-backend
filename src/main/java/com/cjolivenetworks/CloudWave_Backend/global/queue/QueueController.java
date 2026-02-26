@@ -5,6 +5,7 @@ import com.cjolivenetworks.CloudWave_Backend.global.queue.dto.QueueEnterRequest;
 import com.cjolivenetworks.CloudWave_Backend.global.queue.dto.QueueEnterResponse;
 import com.cjolivenetworks.CloudWave_Backend.global.queue.dto.QueueStatusResponse;
 import com.cjolivenetworks.CloudWave_Backend.global.queue.service.QueueAdmissionService;
+import com.cjolivenetworks.CloudWave_Backend.global.queue.service.QueueAtomicLuaService;
 import com.cjolivenetworks.CloudWave_Backend.global.queue.service.QueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,37 +21,39 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class QueueController {
 
-    private final QueueAdmissionService admissionService;
+//    private final QueueAdmissionService admissionService;
+    private final QueueAtomicLuaService atomicLuaService;
     private final QueueService queueService;
     private final TaskProducer taskProducer;
 
     @PostMapping("/enter")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public QueueEnterResponse enter(@RequestBody QueueEnterRequest request) {
-        // 1) 진입 폭주 억제
-        admissionService.checkAdmissionOrThrow();
+//        // 1) 진입 폭주 억제
+//        admissionService.checkAdmissionOrThrow();
+        QueueEnterResponse response = atomicLuaService.enterAtomic(request);
 
-        // 2) 티켓 생성(순번,상태)
-        QueueEnterResponse resp = queueService.createTicket(request);
+//        // 2) 티켓 생성(순번,상태)
+//        QueueEnterResponse resp = queueService.createTicket(request);
 
         // 3) Kafka enqueue (메인 큐)
         Map<String, Object> msg = new HashMap<>();
-        msg.put("token", resp.getToken());
+        msg.put("token", response.getToken());
         msg.put("userId", request.getUserId());
         msg.put("productId", request.getProductId());
         msg.put("quantity", request.getQuantity() == null ? 1 : request.getQuantity());
 
-        String key = request.getUserId() == null ? resp.getToken() : request.getUserId();
+        String key = request.getUserId() == null ? response.getToken() : request.getUserId();
 
         try {
             taskProducer.sendMessage(QueueConstants.QUEUE_TOPIC, key, msg);
         } catch (Exception e) {
             // Kafka enqueue 실패 시 롤백
-            queueService.rollbackTicket(resp.getToken());
+            queueService.rollbackTicket(response.getToken());
             throw e;
         }
 
-        return resp;
+        return response;
     }
 
     @GetMapping("/{token}")
