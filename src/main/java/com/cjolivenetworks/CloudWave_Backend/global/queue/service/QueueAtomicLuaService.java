@@ -93,7 +93,6 @@ public class QueueAtomicLuaService {
         return QueueEnterResponse.builder()
                 .token(token)
                 .seq(seq)
-                // position 안 씀 -> 이후 제거 조치 고려
                 .position(-1L)
                 .build();
     }

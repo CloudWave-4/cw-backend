@@ -75,16 +75,26 @@ public class QueueService {
 
         String status = String.valueOf(ticket.get("status"));
 
-        Long rank = redis.opsForZSet().rank(QueueConstants.zsetKey(), token);
+        Long position = null;
+        Long aheadCount = null;
 
-        Long position = (rank == null) ? null : rank + 1;
-        Long ahead = (rank == null) ? null : rank;
+        if (QueueStatus.WAITING.name().equals(status)) {
+            // 대기 중인 상태: ZSET에 토큰이 존재해야 함
+            Long rank = redis.opsForZSet().rank(QueueConstants.zsetKey(), token);
+            // 만약 WAITING인데 rank가 null이라 -> 예외 상황이므로 기본값 처리
+            position = (rank == null) ? -1L : rank + 1;
+            aheadCount = (rank == null) ? -1L : rank;
+        } else {
+            // PROCESSING, DONE, FAILED 상태: 이미 대기열에서 빠져나왔으므로 남은 대기 인원은 0
+            position = 0L;
+            aheadCount = 0L;
+        }
 
         return QueueStatusResponse.builder()
                 .token(token)
                 .status(status)
                 .position(position)
-                .aheadCount(ahead)
+                .aheadCount(aheadCount)
                 .result(ticket.get("result") == null ? null : String.valueOf(ticket.get("result")))
                 .error(ticket.get("error") == null ? null : String.valueOf(ticket.get("error")))
                 .build();
