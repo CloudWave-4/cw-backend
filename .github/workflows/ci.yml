@@ -26,57 +26,59 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      # 스캔 전에는 scan- 접두사 태그로만 올린다.
+      # Image Updater는 40자리 SHA 태그만 감지하므로, 스캔을 통과하기 전에는 개발계에 배포되지 않는다.
       - name: Build Docker image
         run: |
-          IMAGE_TAG=${{ github.sha }}
-          docker build --provenance=false -t $ECR_REPO_URI:$IMAGE_TAG .
+          SCAN_TAG=scan-${{ github.sha }}
+          docker build --provenance=false -t $ECR_REPO_URI:$SCAN_TAG .
 
-      - name: Push Docker image
+      - name: Push Docker image (scan tag)
         run: |
-          IMAGE_TAG=${{ github.sha }}
-          docker push $ECR_REPO_URI:$IMAGE_TAG
+          SCAN_TAG=scan-${{ github.sha }}
+          docker push $ECR_REPO_URI:$SCAN_TAG
 
       - name: Wait for ECR scan to complete
         run: |
-          IMAGE_TAG=${{ github.sha }}
+          SCAN_TAG=scan-${{ github.sha }}
           ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
 
           echo "ECR 이미지 인덱싱 대기 중 (15초)..."
           sleep 15
 
-          echo "스캔 시작 요청: $ECR_REPO_NAME:$IMAGE_TAG"
+          echo "스캔 시작 요청: $ECR_REPO_NAME:$SCAN_TAG"
           aws ecr start-image-scan \
             --repository-name $ECR_REPO_NAME \
-            --image-id imageTag=$IMAGE_TAG \
+            --image-id imageTag=$SCAN_TAG \
             --region $AWS_REGION || echo "scan-on-push로 이미 스캔 시작됨"
 
           echo "스캔 완료 대기 중..."
           aws ecr wait image-scan-complete \
             --repository-name $ECR_REPO_NAME \
-            --image-id imageTag=$IMAGE_TAG \
+            --image-id imageTag=$SCAN_TAG \
             --region $AWS_REGION
 
       - name: Check ECR scan results
         run: |
-          IMAGE_TAG=${{ github.sha }}
+          SCAN_TAG=scan-${{ github.sha }}
           ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
 
           CRITICAL=$(aws ecr describe-image-scan-findings \
             --repository-name $ECR_REPO_NAME \
-            --image-id imageTag=$IMAGE_TAG \
+            --image-id imageTag=$SCAN_TAG \
             --region $AWS_REGION \
             --query 'imageScanFindings.findingSeverityCounts.CRITICAL' \
             --output text)
 
           HIGH=$(aws ecr describe-image-scan-findings \
             --repository-name $ECR_REPO_NAME \
-            --image-id imageTag=$IMAGE_TAG \
+            --image-id imageTag=$SCAN_TAG \
             --region $AWS_REGION \
             --query 'imageScanFindings.findingSeverityCounts.HIGH' \
             --output text)
 
-          [ "$CRITICAL" = "None" ] && CRITICAL=0
-          [ "$HIGH" = "None" ] && HIGH=0
+          if [ "$CRITICAL" = "None" ] || [ -z "$CRITICAL" ]; then CRITICAL=0; fi
+          if [ "$HIGH" = "None" ] || [ -z "$HIGH" ]; then HIGH=0; fi
 
           echo "CRITICAL: $CRITICAL"
           echo "HIGH: $HIGH"
@@ -91,3 +93,36 @@ jobs:
           fi
 
           echo "스캔 완료 (CRITICAL 없음)"
+
+      # 스캔을 통과한 이미지에만 SHA 태그를 붙여 Image Updater가 감지하도록 한다.
+      - name: Promote image (SHA tag)
+        run: |
+          SCAN_TAG=scan-${{ github.sha }}
+          IMAGE_TAG=${{ github.sha }}
+          ECR_REPO_NAME="${ECR_REPO_URI#*.amazonaws.com/}"
+
+          MANIFEST=$(aws ecr batch-get-image \
+            --repository-name $ECR_REPO_NAME \
+            --image-ids imageTag=$SCAN_TAG \
+            --region $AWS_REGION \
+            --query 'images[0].imageManifest' \
+            --output text)
+
+          if [ -z "$MANIFEST" ] || [ "$MANIFEST" = "None" ]; then
+            echo "매니페스트 조회 실패: $SCAN_TAG"
+            exit 1
+          fi
+
+          aws ecr put-image \
+            --repository-name $ECR_REPO_NAME \
+            --image-tag $IMAGE_TAG \
+            --image-manifest "$MANIFEST" \
+            --region $AWS_REGION
+
+          # 같은 이미지에 SHA 태그가 붙었으므로 scan 태그만 제거한다.
+          aws ecr batch-delete-image \
+            --repository-name $ECR_REPO_NAME \
+            --image-ids imageTag=$SCAN_TAG \
+            --region $AWS_REGION || echo "scan 태그 정리 실패 (배포에는 영향 없음)"
+
+          echo "배포 태그 부여 완료: $IMAGE_TAG"
